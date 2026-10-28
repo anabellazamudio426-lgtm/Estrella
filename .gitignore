@@ -1,0 +1,9 @@
+node_modules
+escritorio/web/
+escritorio/dist/
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+*.apk
+*.zip
