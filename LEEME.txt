@@ -1,0 +1,23 @@
+Estrella · agente flotante
+Hecho por Agostina con la plantilla «agente-flotante» (DIA · Didáctica con IA, copyleft).
+
+DESCARGAR
+Android:  https://github.com/anabellazamudio426-lgtm/Estrella/releases/latest/download/Estrella.apk
+Windows:  https://github.com/anabellazamudio426-lgtm/Estrella/releases/latest/download/Estrella-Windows.zip
+
+ANDROID
+1. Bajá el APK en el celular y abrilo. Aceptá «instalar apps desconocidas» solo para este archivo.
+2. Abrí Estrella y seguí los 3 pasos: mostrarse sobre otras apps, notificaciones y micrófono.
+3. Tocá «Encender Estrella». La primera vez que le pidas que mire la pantalla, Android te pregunta
+   si querés compartirla; mientras la compartís se ve el ícono de transmisión.
+
+WINDOWS
+Descomprimí el zip (clic derecho → Extraer todo) y abrí Estrella.exe.
+Si aparece «Windows protegió su PC»: «Más información» → «Ejecutar de todas formas».
+Atajos: Ctrl+Shift+Espacio abre el chat · Ctrl+Shift+P mira la pantalla.
+
+EL CEREBRO
+Sin clave: responde con lo que tiene guardado en la carpeta «conocimiento», anota tareas y notas
+y programa recordatorios. Con una clave de Claude (la tiene que sacar un adulto en
+console.anthropic.com; se paga según el uso) piensa a medida y entiende la pantalla.
+Las claves se cargan en Ajustes (el engranaje) y quedan solo en tu equipo.

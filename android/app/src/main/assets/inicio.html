@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Estrella</title>
+<style>
+:root{--bg:#0B1612;--c:#15241E;--c2:#20332B;--fg:#F3F1E7;--mu:#9DB0A6;--v:#2FA84F;--o:#F2B33D}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:Nunito,Roboto,system-ui,sans-serif;padding:20px 18px 40px}
+.top{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px}
+.top .m{width:170px;height:186px}
+.top .m svg{width:100%;height:100%;overflow:visible}
+h1{margin:4px 0 0;font-size:30px;font-weight:900;letter-spacing:.02em}
+.sub{margin:0;color:var(--mu);font-size:14.5px;max-width:34ch;line-height:1.45}
+ol{list-style:none;padding:0;margin:22px 0 0;display:flex;flex-direction:column;gap:10px}
+li{background:var(--c);border-radius:18px;padding:14px;display:flex;gap:12px;align-items:center}
+li .n{width:28px;height:28px;border-radius:50%;background:var(--c2);display:grid;place-items:center;font-weight:900;flex:none}
+li.ok .n{background:var(--v);color:#06120c}
+li .t{flex:1;min-width:0}
+li b{display:block;font-size:15px}
+li small{color:var(--mu);font-size:12.5px;line-height:1.35;display:block}
+button{font:inherit;border:0;border-radius:99px;padding:9px 14px;font-weight:900;background:var(--c2);color:var(--fg)}
+li.ok button{display:none}
+.grande{display:block;width:100%;margin-top:18px;padding:15px;font-size:17px;background:var(--o);color:#241600}
+.grande.apagar{background:var(--c2);color:var(--fg)}
+.nota{margin-top:18px;color:var(--mu);font-size:12.5px;line-height:1.5}
+.nota b{color:var(--fg)}
+</style>
+</head>
+<body>
+<div class="top">
+  <div class="m" data-m="cuerpo"></div>
+  <h1>Estrella</h1>
+  <p class="sub">una estrella dorada de cinco puntas, tierna y expresiva, que es tu compañera de inteligencia artificial en el celular y la compu.</p>
+</div>
+<ol>
+  <li id="pFlotar"><span class="n">1</span><div class="t"><b>Mostrarse sobre otras apps</b><small>Para que la isla de Estrella flote arriba de todo. En la pantalla que se abre, activá «Estrella».</small></div><button onclick="AgenteInicio.pedirFlotar()">Dar permiso</button></li>
+  <li id="pNotif"><span class="n">2</span><div class="t"><b>Notificaciones</b><small>Para los recordatorios y los avisos de lo que ve.</small></div><button onclick="AgenteInicio.pedirNotif()">Permitir</button></li>
+  <li id="pMic"><span class="n">3</span><div class="t"><b>Micrófono (opcional)</b><small>Para hablarle en vez de escribir.</small></div><button onclick="AgenteInicio.pedirMic()">Permitir</button></li>
+</ol>
+<button class="grande" id="btn" onclick="accion()">Encender Estrella</button>
+<p class="nota"><b>Mirar la pantalla:</b> la primera vez que le pidas que mire, Android te pregunta si querés compartir la pantalla. Mientras la compartís, aparece el ícono de transmisión arriba. Lo cortás desde la notificación de Estrella.<br><br><b>Cerebro:</b> sin clave, Estrella responde con lo que tiene guardado. Con la clave de Claude piensa a medida y entiende lo que ve; se carga en Ajustes, dentro de la isla.</p>
+<script src="web/persona.js"></script>
+<script src="web/mascota.js"></script>
+<script>
+if (window.AGENTE_PERSONA && AGENTE_PERSONA.colores) { document.documentElement.style.setProperty('--v', AGENTE_PERSONA.colores.principal); document.documentElement.style.setProperty('--o', AGENTE_PERSONA.colores.acento); }
+AGENTE_MASCOTA.montar();
+let activo = false;
+function refrescar(){
+  const e = JSON.parse(AgenteInicio.estado());
+  document.getElementById("pFlotar").classList.toggle("ok", e.flotar);
+  document.getElementById("pNotif").classList.toggle("ok", e.notif);
+  document.getElementById("pMic").classList.toggle("ok", e.mic);
+  activo = e.activo;
+  const b = document.getElementById("btn");
+  b.textContent = activo ? "Apagar Estrella" : (e.flotar ? "Encender Estrella" : "Primero, el permiso 1");
+  b.classList.toggle("apagar", activo);
+}
+function accion(){ if (activo) AgenteInicio.apagar(); else AgenteInicio.encender(); }
+refrescar();
+</script>
+</body>
+</html>
