@@ -17,7 +17,7 @@ const KEY = "agente.flotante.v1";
 const id = () => Math.random().toString(36).slice(2, 9);
 let S; try { S = JSON.parse(localStorage.getItem(KEY)); } catch {}
 S = Object.assign({
-  sonido: true, hablar: false, rapido: false, observar: false, cada: 60, pos: "centro", siempre: [],
+  sonido: true, web: false, hablar: false, rapido: false, observar: false, cada: 60, pos: "centro", siempre: [],
   modelo: "claude-sonnet-5-5", modeloR: "claude-haiku-5-5",
   tareas: [], notas: [], recs: [], chat: [], consejos: []
 }, S || {});
@@ -123,7 +123,7 @@ function avisar(t1, t2, tipo){
 const ACC = {
   crear_tarea: "sumar una tarea", completar_tarea: "marcar una tarea como hecha", borrar_tarea: "borrar una tarea",
   guardar_nota: "guardar una nota", borrar_nota: "borrar una nota", crear_recordatorio: "programar un recordatorio",
-  borrar_recordatorio: "cancelar un recordatorio", ver_pantalla: "mirar tu pantalla"
+  borrar_recordatorio: "cancelar un recordatorio", ver_pantalla: "mirar tu pantalla", buscar_web: "buscar en internet"
 };
 function pedirPermiso(accion, detalle){
   if (S.siempre.includes(accion)) return Promise.resolve(true);
@@ -176,6 +176,14 @@ const acciones = {
     const r = { id: id(), texto, cuando: Date.now() + min*60000 }; S.recs.push(r); save(); programar(r); pintar(); return { ok: true, suena: hora(r.cuando) }; },
   async borrar_recordatorio({ id: x }){ const r = S.recs.find(v => v.id === String(x)); if (!r) throw new Error("No existe ese recordatorio"); await permitir("borrar_recordatorio", r.texto); clearTimeout(recTimers[r.id]); S.recs = S.recs.filter(v => v !== r); save(); pintar(); return { ok: true }; },
   async ver_pantalla(){ await permitir("ver_pantalla", "Sacar una captura de tu pantalla para entender lo que estás haciendo"); return await captura(1400); },
+  async buscar_web({ consulta }){
+    consulta = String(consulta || "").trim(); if (!consulta) throw new Error("Falta la búsqueda");
+    if (!S.web) return "La búsqueda en internet está apagada. La persona puede activarla en Ajustes.";
+    await permitir("buscar_web", "Buscar «" + consulta.slice(0, 120) + "» en internet (se envía solo esa búsqueda)");
+    estado("ocupado", "Buscando en internet", consulta.slice(0, 80));
+    let r; try { r = await window.AGENTE_BUSQUEDA.buscarWeb(consulta, (u) => fetch(u)); } catch (e) { return "No pude buscar en internet ahora (" + (/Failed to fetch|NetworkError/i.test(e.message) ? "sin conexión" : e.message) + ")."; }
+    return typeof r === "string" ? r : r.pregunta;
+  },
   async buscar_conocimiento({ consulta }){ const r = buscar(String(consulta || ""), 6); return r.length ? r.map(fragTexto).join("\n\n---\n\n") : "No encontré nada sobre eso en lo que sé."; }
 };
 function fmtMin(m){ if (m < 1) return Math.round(m*60) + " s"; if (m < 60) return Math.round(m) + " min"; const h = Math.floor(m/60), r = Math.round(m%60); return h + " h" + (r ? " " + r + " min" : ""); }
@@ -302,6 +310,8 @@ const TOOLS = [
   { name: "borrar_recordatorio", description: "Cancela un recordatorio por id.", input_schema: { type: "object", properties: { id: { type: "string" } }, required: ["id"] } },
   { name: "ver_pantalla", description: "Saca una captura de la pantalla (y en la compu, los títulos de las ventanas). Usala cuando la pregunta depende de lo que la persona está haciendo y no te mandaron captura.", input_schema: { type: "object", properties: {} } }
 ];
+const TOOL_WEB = { name: "buscar_web", description: "Busca en internet (clima de una ciudad o resumen de Wikipedia en español). Usala solo si la respuesta no está en la base de conocimiento y la persona necesita datos externos o actuales. La app pide permiso en cada búsqueda.", input_schema: { type: "object", properties: { consulta: { type: "string" } }, required: ["consulta"] } };
+const herramientas = () => S.web ? TOOLS.concat([TOOL_WEB]) : TOOLS;
 function sistema(consulta){
   const rel = buscar(consulta, 5);
   const dinamico = `Fecha y hora: ${new Date().toLocaleString("es-AR", { weekday: "long", day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })}. Dispositivo: ${PLAT === "android" ? "celular Android" : "computadora"}.
@@ -331,7 +341,7 @@ async function conClaude(texto, adj, cap){
   const el = burbuja("ag", "…"); let salida = "";
   for (let vuelta = 0; vuelta < 6; vuelta++) {
     estado("ocupado", "Pensando", "Pensando…");
-    const r = await api.claude({ model: S.rapido ? S.modeloR : S.modelo, max_tokens: 1500, system: sys, tools: TOOLS, messages: mensajes });
+    const r = await api.claude({ model: S.rapido ? S.modeloR : S.modelo, max_tokens: 1500, system: sys, tools: herramientas(), messages: mensajes });
     if (!r || r.error) { if (r?.error === "sin_conexion") { el.remove(); return null; } salida += (salida ? "\n" : "") + mensajeError(r || { error: "sin respuesta" }); break; }
     mensajes.push({ role: "assistant", content: r.content });
     const textos = r.content.filter(b => b.type === "text").map(b => b.text.trim()).filter(Boolean);
@@ -363,7 +373,7 @@ async function conSample(texto, adj){
   const hist = S.chat.slice(-11, -1).filter(c => c.t).map(c => ({ role: c.r === "yo" ? "user" : "assistant", content: c.t }));
   hist.forEach(m => turnos.push(m));
   turnos.push({ role: "user", content: t });
-  const tools = TOOLS.filter(x => x.name !== "ver_pantalla").map(x => ({ name: x.name, description: x.description, inputSchema: x.input_schema, execute: async inp => { if (x.name === "buscar_conocimiento") estado("ocupado", "Buscando en tu material", String(inp?.consulta || "")); return await acciones[x.name](inp || {}); } }));
+  const tools = herramientas().filter(x => x.name !== "ver_pantalla").map(x => ({ name: x.name, description: x.description, inputSchema: x.input_schema, execute: async inp => { if (x.name === "buscar_conocimiento") estado("ocupado", "Buscando en tu material", String(inp?.consulta || "")); return await acciones[x.name](inp || {}); } }));
   const el = burbuja("ag", "…");
   estado("ocupado", "Pensando", "Pensando…");
   try {
@@ -429,6 +439,7 @@ async function entender(t, adj, cap){
   if ((/^(hola|buenas|buen dia|che)\b/.test(s) || s.startsWith(norm(P.nombre))) && s.length < 25) return P.saludo;
   if (/gracias/.test(s) && s.length < 30) return "¡De nada! Acá arriba estoy. 🤝";
   if (/que (podes|sabes) hacer|quien sos|como te ves/.test(s)) return "Soy " + P.nombre + ": " + P.descripcion + "\nTambién floto arriba de la pantalla, te anoto tareas y notas, te recuerdo cosas y miro tu pantalla si me das permiso.";
+  if (S.web && window.AGENTE_BUSQUEDA?.pideClima(t)) return await acciones.buscar_web({ consulta: t.replace(/[¿?]/g, "").trim() });
   const r = buscar(t, 3);
   if (r.length) {
     const f = r[0], frases = f.texto.replace(/\s+/g, " ").match(/[^.!?]+[.!?]+/g) || [f.texto];
@@ -436,7 +447,12 @@ async function entender(t, adj, cap){
     const otros = r.slice(1).map(x => "«" + x.titulo + "»").join(" y ");
     return `Mirá, en tu material (${f.doc} › ${f.titulo}) dice:\n\n${cuerpo.trim() || f.texto.slice(0, 700)}${otros ? "\n\nTambién tiene que ver con " + otros + "." : ""}\n\n(Ahora respondo con lo que tengo guardado; con la clave de Claude te lo armo a medida.)`;
   }
-  return "Eso no lo tengo en lo que guardé, y sin la clave de Claude no te quiero inventar nada. Probá preguntarme sobre " + (P.temas || "lo que sé") + ", o cargá la clave en Ajustes y lo pensamos juntos. 🤝";
+  if (S.web && window.AGENTE_BUSQUEDA && tokens(t).length >= 1 && s.length > 3) {
+    const out = await acciones.buscar_web({ consulta: t.replace(/[¿?]/g, "").trim() });
+    if (!/^No encontré nada|^No pude buscar/.test(out)) return out;
+    return out + "\nSi querés, probá con otras palabras.";
+  }
+  return "Eso no lo tengo en lo que guardé, y sin la clave de Claude no te quiero inventar nada. Probá preguntarme sobre " + (P.temas || "lo que sé") + ", o cargá la clave en Ajustes y lo pensamos juntos. 🤝" + (S.web ? "" : "\n(También podés activar «Buscar en internet» en Ajustes: es gratis.)");
 }
 
 /* ---------- modo observador ---------- */
@@ -471,6 +487,7 @@ $("#wObs").onclick = () => ponerObservador(!S.observar);
 /* ---------- ajustes ---------- */
 async function pintarAjustes(){
   $("#optPos").value = S.pos; $("#optObs").checked = S.observar; $("#optCada").value = String(S.cada); $("#optHablar").checked = S.hablar;
+  $("#optWeb").checked = S.web; pintarResumen();
   $("#optRapido").checked = S.rapido; $("#optSonido").checked = S.sonido; $("#optModelo").value = S.modelo; $("#optModeloR").value = S.modeloR;
   const ini = await api.inicioEstado(); if (ini !== null) $("#optInicio").checked = ini;
   $("#claveOk").innerHTML = claves.claude ? '<span class="ok">✓ guardada</span>' : "";
@@ -491,6 +508,40 @@ $("#optModelo").onchange = e => { S.modelo = e.target.value.trim() || "claude-so
 $("#optModeloR").onchange = e => { S.modeloR = e.target.value.trim() || "claude-haiku-5-5"; save(); };
 $("#borrarPerm").onclick = () => { S.siempre = []; save(); pintarAjustes(); };
 $("#borrarChat").onclick = () => { S.chat = []; S.consejos = []; save(); pintarChat(); };
+
+/* ---------- tus datos guardados: ver, corregir y borrar ---------- */
+const plural = (n, u, p) => n + " " + (n === 1 ? u : p);
+function pintarResumen(){
+  $("#resumenDatos").textContent = plural(S.chat.length, "mensaje", "mensajes") + " · " + plural(S.tareas.length, "tarea", "tareas") + " · " + plural(S.notas.length, "nota", "notas") + " · " + plural(S.recs.length, "recordatorio", "recordatorios") + " · " + plural(S.siempre.length, "permiso «Siempre»", "permisos «Siempre»");
+}
+function pintarDatos(){
+  const fila = (tipo, x, txt) => `<div class="dato" data-tipo="${tipo}" data-id="${x.id}" style="display:flex;gap:6px;margin:4px 0"><input type="text" value="${esc(txt).replace(/"/g, "&quot;")}" style="flex:1;min-width:0"><button class="btn" data-a="borrar">Borrar</button></div>`;
+  const bloque = (titulo, arr, tipo, f) => `<div style="margin:8px 0 2px;font-weight:900">${titulo} (${arr.length})</div>` + (arr.map(x => fila(tipo, x, f(x))).join("") || "<small>Nada guardado.</small>");
+  $("#listaDatos").innerHTML = bloque("Tareas", S.tareas, "tareas", x => x.texto) + bloque("Notas", S.notas, "notas", x => x.texto) + bloque("Recordatorios", S.recs, "recs", x => x.texto) +
+    `<div style="margin:8px 0 2px;font-weight:900">Charla (${S.chat.length})</div><button class="btn" data-a="chat">Borrar la charla</button>`;
+}
+$("#verDatos").onclick = () => { const p = $("#panelDatos"); p.hidden = !p.hidden; $("#verDatos").textContent = p.hidden ? "Ver y editar" : "Cerrar"; if (!p.hidden) pintarDatos(); };
+$("#listaDatos").addEventListener("change", e => {
+  const d = e.target.closest(".dato"); if (!d) return; const x = S[d.dataset.tipo].find(v => v.id === d.dataset.id); const v = e.target.value.trim();
+  if (x && v) { x.texto = v; save(); pintar(); }
+});
+$("#listaDatos").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.a === "chat") { S.chat = []; S.consejos = []; save(); pintarChat(); }
+  else if (b.dataset.a === "borrar") { const d = b.closest(".dato"), t = d.dataset.tipo; if (t === "recs") clearTimeout(recTimers[d.dataset.id]); S[t] = S[t].filter(v => v.id !== d.dataset.id); save(); pintar(); }
+  pintarDatos(); pintarResumen();
+});
+let confirmaTodo = 0;
+$("#borrarTodo").onclick = () => {
+  const b = $("#borrarTodo");
+  if (!confirmaTodo) { b.textContent = "¿Seguro? Tocá de nuevo"; confirmaTodo = setTimeout(() => { confirmaTodo = 0; b.textContent = "Borrar todo"; }, 5000); return; }
+  clearTimeout(confirmaTodo); confirmaTodo = 0; b.textContent = "Borrar todo";
+  S.recs.forEach(r => clearTimeout(recTimers[r.id]));
+  S.chat = []; S.consejos = []; S.tareas = []; S.notas = []; S.recs = []; S.siempre = [];
+  save(); pintar(); pintarChat(); pintarAjustes(); if (!$("#panelDatos").hidden) pintarDatos();
+  estado("listo", "Todo borrado", "Ya no guardo nada de lo anterior.");
+};
+$("#optWeb").onchange = e => { S.web = e.target.checked; save(); };
 
 /* ---------- arranque ---------- */
 (async () => {

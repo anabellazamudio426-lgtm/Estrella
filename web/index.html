@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data: blob:; worker-src 'self' blob:; connect-src 'self' data: blob:">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data: blob:; worker-src 'self' blob:; connect-src 'self' data: blob: https://geocoding-api.open-meteo.com https://api.open-meteo.com https://es.wikipedia.org">
 <title>Estrella</title>
 <style>
 /* Isla oscura del agente flotante: color principal y acento salen de persona.js. */
@@ -260,6 +260,11 @@ button{cursor:pointer}
       <div class="fila"><div><label for="optSonido">Sonidos</label></div><input type="checkbox" class="sw" id="optSonido"></div>
       <div class="fila solo-escritorio"><div><label for="optInicio">Iniciar con la compu</label></div><input type="checkbox" class="sw" id="optInicio"></div>
       <div class="fila"><div><label for="optModelo">Modelos</label><small>chat / rápido</small></div><div style="display:flex;gap:4px;min-width:0;flex-wrap:wrap"><input type="text" id="optModelo" style="width:140px"><input type="text" id="optModeloR" style="width:140px"></div></div>
+      <div class="fila ancha"><div><label for="optWeb">Buscar en internet (opcional)</label><small>Gratis y sin clave: el clima (Open-Meteo) y datos de Wikipedia. Solo se envía lo que buscás, nunca tu pantalla ni tus archivos, y Estrella te pide permiso en cada búsqueda.</small></div><input type="checkbox" class="sw" id="optWeb"></div>
+      <div class="fila ancha"><div><label>Costos, en claro</label><small><b>Gratis:</b> modo local, voz del dispositivo y la búsqueda en internet de arriba.<br><b>Puede costar:</b> la clave de Claude (se paga por uso desde tu cuenta de Anthropic) y la de ElevenLabs si usás su voz. Sin clave no se cobra nada.<br>Las claves se guardan solo en este equipo; para borrarlas, vaciá el campo y aceptá.</small></div></div>
+      <div class="fila ancha"><div><label>Tus datos guardados</label><small>Todo queda solo en este dispositivo. Estrella no guarda grabaciones de voz ni capturas de pantalla.</small><div id="resumenDatos" style="margin-top:4px;font-weight:700"></div></div><button class="btn" id="verDatos">Ver y editar</button></div>
+      <div class="fila ancha" id="panelDatos" hidden><div id="listaDatos" style="width:100%"></div></div>
+      <div class="fila ancha"><div><label>Borrar todo lo guardado</label><small>Charla, tareas, notas, recordatorios y permisos «Siempre». No se puede deshacer.</small></div><button class="btn" id="borrarTodo">Borrar todo</button></div>
       <div class="fila ancha"><div><label>Permisos dados «Siempre»</label><div class="lista-perm" id="listaPerm"></div></div><button class="btn" id="borrarPerm">Volver a preguntar</button></div>
       <div class="fila ancha"><div><label>Borrar la charla</label><small>Tareas y notas quedan</small></div><button class="btn" id="borrarChat">Borrar</button></div>
     </div>
@@ -274,6 +279,7 @@ button{cursor:pointer}
 <script src="persona.js"></script>
 <script src="conocimiento.js"></script>
 <script src="mascota.js"></script>
+<script src="busqueda.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
